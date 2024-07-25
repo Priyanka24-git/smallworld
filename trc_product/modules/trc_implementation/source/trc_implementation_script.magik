@@ -1,0 +1,19 @@
+#% text_encoding = iso8859_1
+
+_package sw
+$
+
+_pragma(classify_level=restricted)
+def_slotted_exemplar(:trc_implementation_script, {}, {})
+$
+
+_pragma(classify_level=restricted)
+_method trc_implementation_script.working?()
+	##
+	## This quality routine can run on entered fibre figure eight
+	## records.
+	
+	_return _true 
+_endmethod
+$
+

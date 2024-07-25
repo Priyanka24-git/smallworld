@@ -1,0 +1,302 @@
+#% text_encoding = iso8859_1
+_package sw
+$
+
+_global pni_init << 
+_proc@pni_init(db_dir, _optional soc_name, open_job_queue?, job_queue_ds_name, db_context_dir, login?)
+
+	soc_name << soc_name.default(:gis)
+			
+	_dynamic !disable_text_translation?!
+	!disable_text_translation?! << _true
+
+	# Switch off authorisation so that dynamic enumerators can be
+	# accessed when opening the database
+	smallworld_product.set_startup_option(:authorisation, :none)
+
+	ace_dir << system.pathname_down(db_dir,"ds_admin")
+
+	smallworld_product.open_database_with_context( ace_dir, db_context_dir, soc_name )
+
+	_if open_job_queue?.default(_true)
+	_then
+		# Open the job_queue dataset
+		job_queue_ds_name << job_queue_ds_name.default(:job_queue)
+		gis_program_manager.open_datasets(job_queue_ds_name)
+	_endif
+
+	# Switch authorisation on again
+	gis_program_manager.open_authorisation({ace_dir})
+        smallworld_product.set_startup_option(:authorisation, :singleuser)
+	auth_view << gis_program_manager.authorisation_view
+	
+	# ...and suppress warning message.
+	gis_program_manager.authorisation_view.alternative_control_enabled? << _false 
+	
+	# Set up authorisation for datasets
+	_for a_view _over gis_program_manager.cached_datasets()
+	_loop
+		_if a_view.is_class_of?(mit_gis_ds_view)
+		_then
+			a_view.auth_view << auth_view
+			_if mit_manager.main_pni_dataset _is _unset
+			_then
+				# This means that the soc does not have a view with the
+				# parameter main_pni_dataset? set to true so take the first
+				# view of type mit_gis_ds_view
+				mit_manager.main_pni_dataset << a_view
+			_endif
+			
+		_elif a_view.is_class_of?(template_ds_view)
+		_then
+			a_view.auth_view << auth_view
+		_endif 
+	_endloop
+
+	_if (a_view << gis_program_manager.cached_dataset(:design_admin)) _isnt _unset
+	_then
+		a_view.auth_view << auth_view
+	_endif
+
+	write( "PNI Database ", ace_dir, " opened at: ", date_time_now() )
+	
+	gs!schematic_manager.open_or_install_schematics()
+
+        smallworld_product.add_startup_procedure({mit_manager, :|post_startup()|})
+
+        # Remove surplus application definitions before we open the
+        # application manager:
+        pni_permitted_apps << mit_manager.permitted_applications
+        _for an_app _over smallworld_product.application_definitions.elements()
+        _loop
+                app_name << an_app.application_name
+                _if pni_permitted_apps.includes?( app_name )
+                _then
+                        write( "Keeping approved application ", app_name )
+                        _continue
+                _else
+                        # Removes:
+			# - Admin application which is replaced by pni_admin
+			# - Case Tool which is subsumed into pni_admin
+                        # - Config which is subsumed into pni_admin
+                        write( "Removing unapproved application ", app_name )
+                        smallworld_product.application_definitions.remove(an_app)
+                _endif
+        _endloop
+
+        # Need an explicit call to login because we had to switch
+        # authorisation off when opening the database.
+	_if login? _isnt _false
+	_then 
+		smallworld_product.login()
+	_endif 
+
+#	# make sure !current_package! is user before we start
+	_global !current_package!
+	!current_package! << sw:package(:user)
+	
+_endproc
+$
+
+_block
+	_local startup_options <<
+		{
+                        :ds_environment_options,
+			{
+				:npcls,     32768,
+				:nslots,    50000,
+				:nbuffs,    8192,
+				:lwt_space, 2**24
+			},
+			:alternative_control_enabled?, _false
+		}
+					
+	_local open_pni <<
+		_proc @open_pni()
+			pni_init(system.getenv("SW_MODELIT_DB_DIR"),
+				 _unset, _unset, _unset,
+				 system.getenv("SW_DB_CONTEXT_DIR") )
+		_endproc
+	
+	_local pni_init_build_proc <<
+		_proc@pni_init_build_proc(mi)
+			 smallworld_product.init("pni", "Physical Network Inventory")
+		_endproc
+	
+
+	_local startup_with_cli <<
+		_proc@startup_with_cli()
+			startup()
+			
+			#Start CLI
+			_return _true
+		_endproc
+
+	# Magik sessions
+
+	magik_session.register_new(
+		"pni_closed",
+
+		:parent_session, "sw_core:swaf",
+
+		:add_products, {:sw_schematics, :sw_dm, :sw_common_office},
+
+		:optional_products, { :pni_resources,  :sw_core_lp, :sw_dm_lp, :sw_schematics_lp, :pni_lp  },
+
+		:init_build_proc, pni_init_build_proc,
+		
+		:load_modules, { :pni_base_image, :pni_image },
+
+		:package, :sw,
+
+		:startup_options, startup_options,
+
+		:post_build_proc, image_date_stamp_proc )
+		
+		
+	magik_session.register_new(
+		"trc_pni_closed",
+
+		:parent_session, "pni:pni_closed",
+
+		:add_products, {:sw_schematics, :sw_dm, :sw_common_office, :trc_product},
+
+		:optional_products, { :pni_resources,  :sw_core_lp, :sw_dm_lp, :sw_schematics_lp, :pni_lp  },
+
+		:init_build_proc, pni_init_build_proc,
+		
+		:load_modules, { :pni_base_image, :pni_image, :trc_implementation},
+
+		:package, :sw,
+
+		:startup_options, startup_options,
+
+		:post_build_proc, image_date_stamp_proc )
+	
+	magik_session.register_new(
+		"pni_custom_closed",
+
+		:parent_session, "pni_closed",
+
+		:add_products, {:pni_custom},
+		
+		:load_modules, { :pni_custom_image },
+
+		:package, :sw,
+		
+		:startup_options, startup_options,
+
+		:post_build_proc,  image_date_stamp_proc)
+	
+	magik_session.register_new(
+		"pni_dtv_closed",
+
+		:parent_session, "pni_closed",
+
+		:load_modules, { :pni_dtv_image },
+
+		:package, :sw,
+		
+		:post_build_proc,  pni_post_build_proc)
+
+	magik_session.register_new(
+		"pni_coax_closed",
+
+		:parent_session, "pni_closed",
+
+		:add_products, {:pni_coax_conflicts, :pni_coax_resources},
+		
+		:load_modules, { :pni_coax_conflicts },
+
+		:package, :sw,
+		
+		:startup_options, startup_options,
+
+		:post_build_proc,  image_date_stamp_proc)
+	
+	magik_session.register_new(
+		"pni_open",
+
+		:parent_session, "pni_closed",
+
+		:post_build_proc, image_date_stamp_proc,
+
+		:package, :sw,
+
+		## For a session which will NOT autostart
+		## change argument :startup_proc to _unset 
+		:startup_proc, startup_with_cli,
+				
+		:startup_options, startup_options,
+
+		:open_database_proc, open_pni )
+
+
+	magik_session.register_new(
+		"trc_pni_open",
+
+		:parent_session, "trc_pni_closed",
+
+		:post_build_proc, image_date_stamp_proc,
+
+		:package, :sw,
+
+		## For a session which will NOT autostart
+		## change argument :startup_proc to _unset 
+		:startup_proc, startup_with_cli,
+				
+		:startup_options, startup_options,
+
+		:open_database_proc, open_pni )
+		
+	magik_session.register_new(
+		"pni_custom_open",
+
+		:parent_session, "pni_custom_closed",
+
+		:post_build_proc, image_date_stamp_proc,
+
+		:package, :sw,
+
+		## For a session which will NOT autostart
+		## change argument :startup_proc to _unset 
+		:startup_proc, startup_with_cli,
+				
+		:startup_options, startup_options,
+
+		:open_database_proc, open_pni )
+	
+	magik_session.register_new(
+		"pni_dtv_open",
+
+		:parent_session, "pni_dtv_closed",
+
+		:post_build_proc, pni_post_build_proc,
+
+		:package, :sw,
+
+		## For a session which will NOT autostart
+		## change argument :startup_proc to _unset 
+		:startup_proc, startup_with_cli,
+				
+		:open_database_proc, open_pni )
+	
+	magik_session.register_new(
+		"pni_coax_open",
+
+		:parent_session, "pni_coax_closed",
+
+		:post_build_proc, image_date_stamp_proc,
+
+		:package, :sw,
+
+		## For a session which will NOT autostart
+		## change argument :startup_proc to _unset 
+		:startup_proc, startup_with_cli,
+		
+		:startup_options, startup_options,
+
+		:open_database_proc, open_pni )
+
+_endblock
+$

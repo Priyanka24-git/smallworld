@@ -1,0 +1,93 @@
+#
+# Smallworld Core Windows Platforms Standard Core Product Aliases
+#
+# The Smallworld Product's standard aliases file should not be edited
+# by hand.  A user can have personal aliases by placing them in a file
+# named `gis_aliases' in his/her home directory, but the alias names
+# must be chosen not to clash with those in the standard aliases file.
+#
+
+# P N I
+pni:
+	title                   = Start Smallworld Physical Network Inventory Closed
+	session                 = pni:pni_closed
+	product                 = pni
+	args		        = -cli
+	SW_LAUNCH_JAVA_MEMORY   = -Xmx1500m
+
+pni_open:
+	title                   = Start Smallworld Physical Network Inventory Application
+	session                 = pni:pni_open
+	SW_CONSTRUCTION_PACK_DIR= C:/Temp
+	SW_LAYOUT_DOCUMENT_DIR  = C:/Temp
+	SW_MODELIT_DB_DIR       = %SMALLWORLD_GIS%/../pni/example_db/ds
+	splash_screen           = %SMALLWORLD_GIS%/../pni/resources/base/bitmaps/pni_splash.png
+	product                 = pni
+	args	     	        = -cli
+	SW_LAUNCH_JAVA_MEMORY   = -Xmx1500m
+
+pni_job_server:
+	title                   = Start Smallworld Physical Network Inventory Job Server
+	session                 = pni:pni_open
+	product                 = pni
+	args	     	        = -cli -application pni_job_server_application
+	SW_MODELIT_DB_DIR       = %SMALLWORLD_GIS%/../pni/example_db/ds
+	SW_LAUNCH_JAVA_MEMORY   = -Xmx1500m
+	SW_LAUNCH_JAVA_ARGS     = -Djava.awt.headless=true
+	SW_JOB_SERVER_LOGGING_LEVEL = info
+	
+pni_job_server_k8:
+	title                   = Start Smallworld Physical Network Inventory Job Server
+	session                 = pni:pni_open
+	product                 = pni
+	SW_LAUNCH_JAVA_MEMORY   = -Xmx1500m
+	SW_JOB_SERVER_LOGGING_OUTPUT = !output!
+
+# P N I   C U S T O M
+pni_custom:
+	title                   = Start Smallworld Physical Network Inventory Custom Closed
+	session                 = pni:pni_custom_closed
+	product                 = pni
+	args		        = -cli
+	SW_LAUNCH_JAVA_MEMORY   = -Xmx1500m
+
+pni_custom_open:
+	title                   = Start Smallworld Physical Network Inventory Custom Application
+	session                 = pni:pni_custom_open
+	SW_CONSTRUCTION_PACK_DIR= C:/Temp
+	SW_LAYOUT_DOCUMENT_DIR  = C:/Temp
+	SW_MODELIT_DB_DIR       = %SMALLWORLD_GIS%/../pni/example_db/ds
+	splash_screen           = %SMALLWORLD_GIS%/../pni/resources/base/bitmaps/pni_splash.png
+	product                 = pni
+	args		        = -cli
+	SW_LAUNCH_JAVA_MEMORY   = -Xmx1500m
+
+# T R C
+trc_pni:
+	title                   = Start Smallworld Physical Network Inventory Closed
+	session                 = trc_product:trc_pni_closed
+	product                 = pni
+	args		        = -cli
+	SW_LAUNCH_JAVA_MEMORY   = -Xmx1500m
+
+trc_pni_open:
+	title                   = Start Smallworld Physical Network Inventory Application
+	session                 = trc_product:trc_pni_open
+	SW_CONSTRUCTION_PACK_DIR= C:/Temp
+	SW_LAYOUT_DOCUMENT_DIR  = C:/Temp
+	SW_MODELIT_DB_DIR       = %SMALLWORLD_GIS%/../pni/example_db/ds
+	splash_screen           = %SMALLWORLD_GIS%/../pni/resources/base/bitmaps/pni_splash.png
+	product                 = pni
+	args	     	        = -cli
+	SW_LAUNCH_JAVA_MEMORY   = -Xmx1500m
+	
+trc_open_emacs:
+	EMACSROOT		= %SMALLWORLD_GIS%\..\emacs
+	title			= Bharti Tele PNI 5 eMacs
+	program			= %EMACSROOT%\bin\runemacs.exe
+	icon_file		= %EMACSROOT%\bin\runemacs.exe
+	log_file		= nul:
+	product			= emacs
+	EMACSLOADPATH	= %EMACSROOT%\site-lisp;%EMACSROOT%\lisp;%EMACSROOT%\leim
+	PATH			= %PATH%;%EMACSROOT%\bin
+	HOME			= %HOMEDRIVE%%HOMEPATH%	
